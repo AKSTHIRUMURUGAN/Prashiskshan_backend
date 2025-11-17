@@ -1,0 +1,67 @@
+{
+  "name": "prashiskshan-backend",
+  "version": "0.1.0",
+  "description": "Prashiskshan NEP-compliant internship management backend",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch",
+    "lint": "eslint .",
+    "format": "prettier . --write"
+  },
+  "keywords": [
+    "prashiskshan",
+    "internship",
+    "nep2020",
+    "express",
+    "mongodb"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.932.0",
+    "@aws-sdk/lib-storage": "^3.932.0",
+    "@google/generative-ai": "^0.24.1",
+    "@sentry/node": "^8.32.0",
+    "bcryptjs": "^3.0.3",
+    "bullmq": "^5.63.2",
+    "compression": "^1.8.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.2.1",
+    "express-validator": "^7.3.0",
+    "firebase-admin": "^13.6.0",
+    "form-data": "^4.0.0",
+    "helmet": "^8.1.0",
+    "imagekit": "^6.0.0",
+    "ioredis": "^5.8.2",
+    "jsonwebtoken": "^9.0.2",
+    "mailgun.js": "^11.1.0",
+    "mongoose": "^8.19.4",
+    "morgan": "^1.10.1",
+    "multer": "^2.0.2",
+    "papaparse": "^5.5.3",
+    "pdfkit": "^0.17.2",
+    "rate-limit-redis": "^4.0.0",
+    "redis": "^4.7.0",
+    "twilio": "^5.10.5",
+    "winston": "^3.18.3"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.1",
+    "eslint-plugin-prettier": "^5.2.1",
+    "jest": "^30.2.0",
+    "nodemon": "^3.1.11",
+    "prettier": "^3.6.2",
+    "supertest": "^7.1.4"
+  }
+}
