@@ -40,11 +40,6 @@ const requiredKeys = [
   "R2_SECRET_ACCESS_KEY",
   "R2_BUCKET",
   "R2_PUBLIC_URL",
-  "ORACLE_REGION",
-  "ORACLE_NAMESPACE",
-  "ORACLE_ACCESS_KEY_ID",
-  "ORACLE_SECRET_ACCESS_KEY",
-  "ORACLE_BUCKET",
 ];
 
 const missingKeys = requiredKeys.filter((key) => !process.env[key]);
@@ -96,14 +91,6 @@ const config = {
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
     bucket: process.env.R2_BUCKET,
     publicUrl: process.env.R2_PUBLIC_URL,
-  },
-  oracle: {
-    region: process.env.ORACLE_REGION,
-    namespace: process.env.ORACLE_NAMESPACE,
-    accessKeyId: process.env.ORACLE_ACCESS_KEY_ID,
-    secretAccessKey: process.env.ORACLE_SECRET_ACCESS_KEY,
-    bucket: process.env.ORACLE_BUCKET,
-    endpoint: process.env.ORACLE_ENDPOINT,
   },
   imagekit: {
     publicKey: process.env.IMAGEKIT_PUBLIC_KEY,

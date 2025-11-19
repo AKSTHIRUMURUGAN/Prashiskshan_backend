@@ -2,7 +2,6 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { randomUUID } from "node:crypto";
 import s3Client from "../config/s3.js";
 import r2Client from "../config/r2.js";
-import oracleClient from "../config/oracle.js";
 import config from "../config/index.js";
 import { logger } from "../utils/logger.js";
 
@@ -16,14 +15,6 @@ const providers = {
     client: r2Client,
     bucket: config.r2.bucket,
     url: (key) => `${config.r2.publicUrl.replace(/\/$/, "")}/${key}`,
-  },
-  oracle: {
-    client: oracleClient,
-    bucket: config.oracle.bucket,
-    url: (key) =>
-      `https://objectstorage.${config.oracle.region}.oraclecloud.com/n/${config.oracle.namespace}/b/${config.oracle.bucket}/o/${encodeURIComponent(
-        key,
-      )}`,
   },
 };
 
