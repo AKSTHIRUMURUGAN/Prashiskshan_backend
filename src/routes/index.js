@@ -4,6 +4,8 @@ import studentRouter from "./student.js";
 import mentorRouter from "./mentor.js";
 import companyRouter from "./company.js";
 import adminRouter from "./admin.js";
+import testsRouter from "./_tests.js";
+import statusRouter from "./status.js";
 import { apiSuccess, apiError } from "../utils/apiResponse.js";
 
 const router = Router();
@@ -17,6 +19,9 @@ router.use("/students", studentRouter);
 router.use("/mentors", mentorRouter);
 router.use("/companies", companyRouter);
 router.use("/admins", adminRouter);
+
+router.use("/_tests", testsRouter);
+router.use("/_status", statusRouter);
 
 router.use((req, res) => {
   res.status(404).json(apiError("Route not found", { path: req.originalUrl }, { status: 404 }));

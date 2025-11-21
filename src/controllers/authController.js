@@ -43,6 +43,14 @@ export const registerStudent = async (req, res, next) => {
       });
     } catch (error) {
       logger.error("Firebase user creation failed", error);
+      // Provide clearer guidance for common Firebase configuration errors
+      const code = error && (error.code || (error.errorInfo && error.errorInfo.code));
+      if (code === "auth/configuration-not-found") {
+        throw createHttpError(
+          502,
+          "Unable to create Firebase user: Email/Password provider not configured. Enable Email/Password sign-in in the Firebase Console or use the Firebase Auth emulator (set FIREBASE_AUTH_EMULATOR_HOST).",
+        );
+      }
       throw createHttpError(502, "Unable to create Firebase user");
     }
 
@@ -60,7 +68,13 @@ export const registerStudent = async (req, res, next) => {
       student.calculateReadinessScore();
       await student.save();
 
-      await emailService.sendWelcomeStudent({ email, name: profile.name });
+      // Send welcome email but do not let email failures block registration.
+      // Run in background and log any errors.
+      emailService
+        .sendWelcomeStudent({ email, name: profile.name })
+        .catch((emailError) => {
+          logger.error("Welcome email failed", { error: emailError.message });
+        });
 
       res.status(201).json(apiSuccess({ student: sanitizeDoc(student, "student") }, "Student registered successfully"));
     } catch (error) {
@@ -97,6 +111,13 @@ export const registerCompany = async (req, res, next) => {
       });
     } catch (error) {
       logger.error("Firebase company creation failed", error);
+      const code = error && (error.code || (error.errorInfo && error.errorInfo.code));
+      if (code === "auth/configuration-not-found") {
+        throw createHttpError(
+          502,
+          "Unable to create Firebase user: Email/Password provider not configured. Enable Email/Password sign-in in the Firebase Console or use the Firebase Auth emulator (set FIREBASE_AUTH_EMULATOR_HOST).",
+        );
+      }
       throw createHttpError(502, "Unable to create Firebase user");
     }
 
@@ -125,10 +146,21 @@ export const registerCompany = async (req, res, next) => {
 
 export const login = async (req, res, next) => {
   try {
-    const { idToken } = req.body;
-    if (!idToken) throw createHttpError(400, "idToken is required");
+    const { idToken, firebaseUid } = req.body;
+    if (!idToken && !firebaseUid) throw createHttpError(400, "idToken or firebaseUid is required");
 
-    const decoded = await verifyToken(idToken);
+    let decoded;
+    if (idToken) {
+      decoded = await verifyToken(idToken);
+    } else {
+      // Development-only fallback: allow logging in by firebaseUid when not in production
+      const allowUidLogin = process.env.NODE_ENV !== "production" || process.env.ALLOW_UID_LOGIN === "true";
+      if (!allowUidLogin) {
+        throw createHttpError(403, "Logging in by firebaseUid is disabled in production");
+      }
+      logger.warn("Development login by firebaseUid used. Do NOT enable this in production.", { firebaseUid });
+      decoded = { uid: firebaseUid };
+    }
     const context = await findUserByFirebaseUid(decoded.uid);
     if (!context) throw createHttpError(404, "User profile not found");
 

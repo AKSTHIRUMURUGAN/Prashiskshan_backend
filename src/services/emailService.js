@@ -110,6 +110,10 @@ export const emailService = {
         return this.sendEmail(data);
     }
   },
+  // Backwards-compatible helpers
+  async sendWelcomeStudent(data) {
+    return this.sendTemplate("welcome-student", data);
+  },
 };
 
 

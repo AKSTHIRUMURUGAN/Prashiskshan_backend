@@ -1,3 +1,9 @@
+node_modules/
+.env
+firebase.json
+dist/
+coverage/
+/*.log
 # dependencies
 node_modules
 .pnp.*

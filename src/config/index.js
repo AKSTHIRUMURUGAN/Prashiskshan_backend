@@ -42,9 +42,11 @@ const requiredKeys = [
   "R2_PUBLIC_URL",
 ];
 
+// In test environment, be more lenient with required keys
+const isTestEnv = process.env.NODE_ENV === "test";
 const missingKeys = requiredKeys.filter((key) => !process.env[key]);
 
-if (missingKeys.length) {
+if (missingKeys.length && !isTestEnv) {
   throw new Error(`Missing required environment variables: ${missingKeys.join(", ")}`);
 }
 
@@ -70,9 +72,11 @@ const config = {
     password: process.env.REDIS_PASSWORD || undefined,
   },
   firebase: {
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    projectId: process.env.FIREBASE_PROJECT_ID || "test-project",
+    privateKey: process.env.FIREBASE_PRIVATE_KEY
+      ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n")
+      : "-----BEGIN PRIVATE KEY-----\nMOCK_KEY_FOR_TESTING\n-----END PRIVATE KEY-----\n",
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL || "test@test-project.iam.gserviceaccount.com",
   },
   gemini: {
     apiKey: process.env.GEMINI_API_KEY,

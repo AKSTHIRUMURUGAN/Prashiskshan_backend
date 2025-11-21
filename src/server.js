@@ -10,6 +10,8 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { generalRateLimiter } from "./middleware/rateLimiter.js";
 import { logger } from "./utils/logger.js";
 import { registerBullBoard } from "./queues/index.js";
+import swaggerUi from "swagger-ui-express";
+import openapiSpec from "./docs/openapi.js";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -29,6 +31,10 @@ app.use(requestLogger);
 app.get("/", (_req, res) => {
   res.json({ success: true, message: "Prashiskshan API" });
 });
+
+// Swagger UI (OpenAPI) - mount before the main API router so /api/docs isn't captured by API 404
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(openapiSpec));
+app.get("/api/docs.json", (_req, res) => res.json(openapiSpec));
 
 app.use("/api", generalRateLimiter, apiRouter);
 
