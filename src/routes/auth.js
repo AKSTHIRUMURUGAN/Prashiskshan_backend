@@ -1,6 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
-import { registerStudent, registerCompany, login, refreshProfile, updateProfile, changePassword, uploadProfileImage, uploadResume, deleteAccount, exchangeCookieToken } from "../controllers/authController.js";
+import { registerStudent, registerCompany, login, refreshProfile, updateProfile, changePassword, uploadProfileImage, uploadResume, deleteAccount, exchangeCookieToken, sendVerificationEmail, sendPasswordResetEmail } from "../controllers/authController.js";
 import { studentRegistration, handleValidationErrors } from "../middleware/validation.js";
 import { authenticate, identifyUser } from "../middleware/auth.js";
 import { authRateLimiterMiddleware as authRateLimiter, uploadRateLimiter } from "../middleware/rateLimiter.js";
@@ -37,6 +37,12 @@ router.get("/me", authenticate, identifyUser, asyncHandler(refreshProfile));
 router.patch("/me", authenticate, identifyUser, asyncHandler(updateProfile));
 
 router.post("/password", authenticate, authRateLimiter, asyncHandler(changePassword));
+
+// Send email verification to currently authenticated user
+router.post("/send-verification", authenticate, identifyUser, asyncHandler(sendVerificationEmail));
+
+// Request password reset email (public)
+router.post("/send-password-reset", authRateLimiter, asyncHandler(sendPasswordResetEmail));
 
 router.post(
   "/profile/image",

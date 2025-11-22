@@ -116,6 +116,17 @@ const openapi = {
         },
         example: { email: "student@example.com", password: "strongPassword123" },
       },
+      SendPasswordResetRequest: {
+        type: "object",
+        required: ["email"],
+        properties: { email: { type: "string", format: "email" } },
+        example: { email: "student@example.com" },
+      },
+      GenericMessage: {
+        type: "object",
+        properties: { success: { type: "boolean" }, message: { type: "string" } },
+        example: { success: true, message: "Password reset email sent" },
+      },
     },
   },
   paths: {
@@ -174,7 +185,39 @@ const openapi = {
           required: true,
           content: { "application/json": { schema: { $ref: "#/components/schemas/LoginRequest" } } },
         },
-        responses: { 200: { description: "Authenticated" }, 400: { description: "Bad request" } },
+        responses: {
+          200: { description: "Authenticated" },
+          400: { description: "Bad request" },
+          403: { description: "Email not verified", content: { "application/json": { schema: { $ref: "#/components/schemas/GenericMessage" }, examples: { unverified: { value: { success: false, message: "Email not verified. Please verify your email before logging in." } } } } } },
+        },
+      },
+    },
+    "/auth/send-verification": {
+      post: {
+        summary: "Send an email verification to the current user",
+        description: "Sends a Firebase email verification link to the authenticated user's email. Requires authentication (cookie or Bearer token).",
+        security: [{ BearerAuth: [] }],
+        responses: {
+          200: { description: "Verification email sent", content: { "application/json": { schema: { $ref: "#/components/schemas/GenericMessage" } } } },
+          401: { description: "Unauthorized" },
+          500: { description: "Server error" },
+        },
+      },
+    },
+    "/auth/send-password-reset": {
+      post: {
+        summary: "Request a password reset email",
+        description: "Sends a Firebase password-reset link to the provided email address. Public endpoint but rate-limited.",
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/SendPasswordResetRequest" } } },
+        },
+        responses: {
+          200: { description: "Password reset email sent", content: { "application/json": { schema: { $ref: "#/components/schemas/GenericMessage" } } } },
+          400: { description: "Bad request" },
+          429: { description: "Too many requests" },
+          500: { description: "Server error" },
+        },
       },
     },
     "/auth/me": {

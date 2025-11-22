@@ -8,6 +8,7 @@ import config from "../config/index.js";
 import imagekitClient from "../config/imagekit.js";
 import { emailService } from "../services/emailService.js";
 import { storageService } from "../services/storageService.js";
+import { analyticsService } from "../services/analyticsService.js";
 import { apiSuccess } from "../utils/apiResponse.js";
 import { logger } from "../utils/logger.js";
 import { createHttpError, generateId, findUserByFirebaseUid, resolveUserFromRequest, sanitizeDoc } from "./helpers/context.js";
@@ -89,6 +90,23 @@ export const registerStudent = async (req, res, next) => {
           logger.error("Welcome email failed", { error: emailError.message });
         });
 
+      // Send email verification link (non-blocking). Uses Firebase Admin to generate a link.
+      (async () => {
+        try {
+          const actionCodeSettings = { url: `${config.app.frontendUrl}/auth/verify?uid=${firebaseUser.uid}`, handleCodeInApp: true };
+          const link = await firebaseAdmin.auth().generateEmailVerificationLink(email, actionCodeSettings);
+          await emailService.sendEmail({ to: email, subject: "Verify your email", html: `<p>Hi ${profile.name}, please verify your email by clicking <a href=\"${link}\">here</a>.</p>` });
+          logger.info("Sent verification email after registration", { email });
+        } catch (err) {
+          logger.warn("Failed to send verification email after registration", { error: err && err.message });
+        }
+      })();
+
+      // Log analytics event (non-blocking)
+      analyticsService
+        .logEvent({ clientId: firebaseUser.uid, name: "sign_up", params: { method: "email" } })
+        .catch(() => {});
+
       res.status(201).json(
         apiSuccess({ student: sanitizeDoc(student, "student"), firebaseUid: firebaseUser.uid }, "Student registered successfully"),
       );
@@ -159,6 +177,18 @@ export const registerCompany = async (req, res, next) => {
         logger.warn("Failed to create Firebase custom token for company", { error: tokenErr.message });
       }
 
+      // Send email verification link for company registration (non-blocking)
+      (async () => {
+        try {
+          const actionCodeSettings = { url: `${config.app.frontendUrl}/auth/verify?uid=${firebaseUser.uid}`, handleCodeInApp: true };
+          const link = await firebaseAdmin.auth().generateEmailVerificationLink(email, actionCodeSettings);
+          await emailService.sendEmail({ to: email, subject: "Verify your company account", html: `<p>Please verify your company account by clicking <a href=\"${link}\">here</a>.</p>` });
+          logger.info("Sent verification email after company registration", { email });
+        } catch (err) {
+          logger.warn("Failed to send verification email after company registration", { error: err && err.message });
+        }
+      })();
+
       res.status(201).json(apiSuccess({ company: sanitizeDoc(company, "company") }, "Company registered successfully"));
     } catch (error) {
       await firebaseAdmin.auth().deleteUser(firebaseUser.uid);
@@ -206,6 +236,23 @@ export const login = async (req, res, next) => {
       logger.warn("Development login by firebaseUid used. Do NOT enable this in production.", { firebaseUid });
       decoded = { uid: firebaseUid };
     }
+    // Enforce email verification for production flows unless explicitly allowed by env.
+    const allowUnverified = process.env.ALLOW_UNVERIFIED_LOGIN === "true";
+    if (!allowUnverified) {
+      try {
+        const firebaseUserRecord = await firebaseAdmin.auth().getUser(decoded.uid);
+        if (!firebaseUserRecord.emailVerified) {
+          throw createHttpError(403, "Email not verified. Please verify your email before logging in.");
+        }
+      } catch (err) {
+        // If Firebase user not found, surface as 404; otherwise rethrow
+        const code = err && (err.code || (err.errorInfo && err.errorInfo.code));
+        if (code === "auth/user-not-found") {
+          throw createHttpError(404, "User not found in Firebase");
+        }
+        throw err;
+      }
+    }
     const context = await findUserByFirebaseUid(decoded.uid);
     if (!context) throw createHttpError(404, "User profile not found");
 
@@ -241,8 +288,43 @@ export const login = async (req, res, next) => {
     }
 
     res.json(apiSuccess({ user: sanitizeDoc(context.doc, context.role) }, "Login successful"));
+    // Log analytics event for login (best-effort, non-blocking)
+    analyticsService.logEvent({ clientId: decoded.uid, name: "login", params: { method: usedIdToken ? "id_token" : "uid" } }).catch(() => {});
   } catch (error) {
     next(error);
+  }
+};
+
+export const sendVerificationEmail = async (req, res, next) => {
+  try {
+    const context = await resolveUserFromRequest(req);
+    if (!context || !context.doc || !context.doc.email) throw createHttpError(400, "User email not found");
+    const email = context.doc.email;
+    const actionCodeSettings = {
+      url: `${config.app.frontendUrl}/auth/verify?uid=${context.doc.firebaseUid}`,
+      handleCodeInApp: true,
+    };
+    const link = await firebaseAdmin.auth().generateEmailVerificationLink(email, actionCodeSettings);
+    await emailService.sendEmail({ to: email, subject: "Verify your email", html: `<p>Please verify your email by clicking <a href=\"${link}\">here</a>.</p>` });
+    res.json(apiSuccess({}, "Verification email sent"));
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const sendPasswordResetEmail = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) throw createHttpError(400, "Email is required");
+    const actionCodeSettings = {
+      url: `${config.app.frontendUrl}/auth/reset-password`,
+      handleCodeInApp: true,
+    };
+    const link = await firebaseAdmin.auth().generatePasswordResetLink(email, actionCodeSettings);
+    await emailService.sendEmail({ to: email, subject: "Reset your password", html: `<p>Reset password by clicking <a href=\"${link}\">here</a>.</p>` });
+    res.json(apiSuccess({}, "Password reset email sent"));
+  } catch (err) {
+    next(err);
   }
 };
 

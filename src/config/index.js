@@ -133,6 +133,11 @@ const config = {
     chatbotDaily: number(process.env.AI_CHATBOT_DAILY_LIMIT, 50),
     summaryDaily: number(process.env.AI_SUMMARY_DAILY_LIMIT, 10),
   },
+  analytics: {
+    // Google Analytics / Firebase Analytics Measurement Protocol (GA4)
+    measurementId: process.env.FIREBASE_ANALYTICS_MEASUREMENT_ID,
+    apiSecret: process.env.FIREBASE_ANALYTICS_API_SECRET,
+  },
 };
 
 export default Object.freeze(config);
