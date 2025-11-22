@@ -24,3 +24,18 @@ Development can use the Firebase Auth emulator or a real Firebase project. The p
 
 Verify the active Firebase mode at runtime using the diagnostic endpoint `/api/_status` (see OpenAPI docs at `/api/docs`).
 
+### Development: logging in with a raw `firebaseUid`
+
+For local testing only, you can log in by passing an existing `firebaseUid` in the login request body instead of an `idToken`. This is strictly a development helper and is disabled in production.
+
+- To enable the fallback in non-production environments, nothing is required — the server allows `firebaseUid` when `NODE_ENV` is not `production`.
+- To enable it explicitly in any environment (not recommended), set `ALLOW_UID_LOGIN=true` in your environment.
+
+Example request body for dev login:
+
+```
+{ "firebaseUid": "i5aA60v5wZOEfXpvkcwCdQP83Oj2" }
+```
+
+Security note: Do NOT enable `ALLOW_UID_LOGIN` in production. This bypasses Firebase authentication and should only be used during local development or automated tests.
+

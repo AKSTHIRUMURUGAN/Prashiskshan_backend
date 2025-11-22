@@ -77,6 +77,7 @@ const config = {
       ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n")
       : "-----BEGIN PRIVATE KEY-----\nMOCK_KEY_FOR_TESTING\n-----END PRIVATE KEY-----\n",
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL || "test@test-project.iam.gserviceaccount.com",
+    webApiKey: process.env.FIREBASE_WEB_API_KEY || process.env.FIREBASE_WEB_API_KEY || undefined,
   },
   gemini: {
     apiKey: process.env.GEMINI_API_KEY,

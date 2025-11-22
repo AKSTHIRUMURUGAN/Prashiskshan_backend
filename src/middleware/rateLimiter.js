@@ -26,6 +26,10 @@ const authRateLimiter = rateLimit({
   message: { success: false, error: "Too many login attempts, please try again later." },
 });
 
+// Allow disabling the auth rate limiter in development via environment variable
+// Set `AUTH_RATE_LIMIT_DISABLED=true` to bypass the authRateLimiter (useful for testing).
+export const authRateLimiterMiddleware = process.env.AUTH_RATE_LIMIT_DISABLED === "true" ? (req, res, next) => next() : authRateLimiter;
+
 const uploadRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 20,

@@ -13,7 +13,19 @@ const createError = (status, message) => {
 
 export const authenticate = async (req, res, next) => {
   try {
-    const header = req.headers.authorization || "";
+    let header = req.headers.authorization || "";
+    // If Authorization header is missing, check for an `id_token` cookie and use it
+    if (!header || !header.startsWith("Bearer ")) {
+      const cookieHeader = req.headers.cookie || "";
+      const match = cookieHeader.match(/(?:^|; )id_token=([^;]+)/);
+      if (match && match[1]) {
+        const cookieToken = decodeURIComponent(match[1]);
+        header = `Bearer ${cookieToken}`;
+        // set a synthetic header so downstream code can see it if necessary
+        req.headers.authorization = header;
+      }
+    }
+
     if (!header.startsWith("Bearer ")) {
       return res.status(401).json({ success: false, error: "Authorization header missing or malformed" });
     }

@@ -1,9 +1,9 @@
 import { Router } from "express";
 import multer from "multer";
-import { registerStudent, registerCompany, login, refreshProfile, updateProfile, changePassword, uploadProfileImage, uploadResume, deleteAccount } from "../controllers/authController.js";
+import { registerStudent, registerCompany, login, refreshProfile, updateProfile, changePassword, uploadProfileImage, uploadResume, deleteAccount, exchangeCookieToken } from "../controllers/authController.js";
 import { studentRegistration, handleValidationErrors } from "../middleware/validation.js";
 import { authenticate, identifyUser } from "../middleware/auth.js";
-import { authRateLimiter, uploadRateLimiter } from "../middleware/rateLimiter.js";
+import { authRateLimiterMiddleware as authRateLimiter, uploadRateLimiter } from "../middleware/rateLimiter.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 const router = Router();
@@ -28,6 +28,9 @@ router.post(
 router.post("/companies/register", asyncHandler(registerCompany));
 
 router.post("/login", authRateLimiter, asyncHandler(login));
+
+// Exchange server-issued custom token cookie (`auth_token`) for an ID token and set `id_token` cookie
+router.post("/exchange-cookie", asyncHandler(exchangeCookieToken));
 
 router.get("/me", authenticate, identifyUser, asyncHandler(refreshProfile));
 

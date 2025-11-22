@@ -108,8 +108,13 @@ const openapi = {
       },
       LoginRequest: {
         type: "object",
-        required: ["idToken"],
-        properties: { idToken: { type: "string" } },
+        properties: {
+          idToken: { type: "string", description: "Firebase ID token (JWT)" },
+          firebaseUid: { type: "string", description: "Dev-only: login by firebase UID" },
+          email: { type: "string", format: "email", description: "Email for server-side sign-in (email+password)" },
+          password: { type: "string", description: "Password for server-side sign-in" },
+        },
+        example: { email: "student@example.com", password: "strongPassword123" },
       },
     },
   },
@@ -225,6 +230,137 @@ const openapi = {
             },
           },
         },
+      },
+    },
+    "/_tests/s3-upload": {
+      post: {
+        summary: "Upload a small sample image to configured storage (S3 or R2)",
+        description: "Stores a tiny PNG to the configured storage provider and returns a public URL. Query `provider` may be `s3` or `r2`.",
+        parameters: [
+          { name: "provider", in: "query", schema: { type: "string", enum: ["s3", "r2"] }, description: "Provider to use (s3 or r2). Defaults to s3." },
+        ],
+        requestBody: {
+          content: {
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                properties: {
+                  file: { type: "string", format: "binary", description: "File to upload (image). If omitted, a 1x1 PNG sample is uploaded." },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Upload result",
+            content: { "application/json": { schema: { type: "object", properties: { success: { type: "boolean" }, provider: { type: "string" }, url: { type: "string" }, key: { type: "string" } } } } },
+          },
+          500: { description: "Upload failed" },
+        },
+      },
+    },
+    "/_tests/send-email": {
+      post: {
+        summary: "Send a test email via a selected provider",
+        description: "Send a simple test email. Set `provider` to `brevo` or `mailgun` to force a provider. If omitted, the server will use the first configured provider.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["to", "subject"],
+                properties: {
+                  provider: { type: "string", enum: ["brevo", "mailgun"], description: "Force a specific provider" },
+                  to: { type: "string", format: "email" },
+                  subject: { type: "string" },
+                  html: { type: "string" },
+                  text: { type: "string" },
+                },
+              },
+              example: { provider: "brevo", to: "you@example.com", subject: "Probe email", text: "Hello from Prashiskshan" },
+            },
+          },
+        },
+        responses: {
+          200: { description: "Email sent or queued", content: { "application/json": { schema: { type: "object" } } } },
+          400: { description: "Missing fields" },
+          502: { description: "Provider error" },
+        },
+      },
+    },
+    "/_tests/queues": {
+      get: {
+        summary: "List BullMQ queues and basic status",
+        description: "Returns counts and simple metrics for configured queues. Useful for smoke testing BullMQ connectivity.",
+        responses: {
+          200: { description: "Queues status", content: { "application/json": { schema: { type: "object" } } } },
+        },
+      },
+    },
+    "/_tests/queues/{queueKey}/enqueue": {
+      post: {
+        summary: "Enqueue a test job to a named queue",
+        parameters: [{ name: "queueKey", in: "path", required: true, schema: { type: "string" }, description: "One of the registered queue keys (email, sms, logbook, report, notification, completion, ai)" }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  jobName: { type: "string", description: "Job name identifier (optional)" },
+                  data: { type: "object", description: "Payload for the job" },
+                  options: { type: "object", description: "Job options for BullMQ (attempts, delay, etc)" },
+                },
+                example: { jobName: "test-job", data: { hello: "world" }, options: { attempts: 1 } },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: "Job enqueued", content: { "application/json": { schema: { type: "object" } } } },
+          404: { description: "Unknown queue key" },
+        },
+      },
+    },
+    "/_tests/queues/{queueKey}/jobs": {
+      get: {
+        summary: "List jobs for a queue",
+        parameters: [
+          { name: "queueKey", in: "path", required: true, schema: { type: "string" } },
+          { name: "types", in: "query", schema: { type: "string" }, description: "Comma-separated types: waiting,active,delayed,completed,failed" },
+        ],
+        responses: { 200: { description: "Jobs list" } },
+      },
+    },
+    "/_tests/queues/{queueKey}/jobs/{jobId}/promote": {
+      post: {
+        summary: "Promote a delayed job to waiting",
+        parameters: [
+          { name: "queueKey", in: "path", required: true, schema: { type: "string" } },
+          { name: "jobId", in: "path", required: true, schema: { type: "string" } },
+        ],
+        responses: { 200: { description: "Promoted" }, 404: { description: "Not found" } },
+      },
+    },
+    "/_tests/queues/{queueKey}/jobs/{jobId}/remove": {
+      post: {
+        summary: "Remove a job from the queue",
+        parameters: [
+          { name: "queueKey", in: "path", required: true, schema: { type: "string" } },
+          { name: "jobId", in: "path", required: true, schema: { type: "string" } },
+        ],
+        responses: { 200: { description: "Removed" }, 404: { description: "Not found" } },
+      },
+    },
+    "/_tests/queues/{queueKey}/process-next": {
+      post: {
+        summary: "Process the next waiting job with a temporary worker (dev only unless enabled)",
+        parameters: [{ name: "queueKey", in: "path", required: true, schema: { type: "string" } }],
+        requestBody: { content: { "application/json": { schema: { type: "object", properties: { jobName: { type: "string" } } } } } },
+        responses: { 200: { description: "Processed or timed out" }, 403: { description: "Disabled in production" } },
       },
     },
     "/_status": {

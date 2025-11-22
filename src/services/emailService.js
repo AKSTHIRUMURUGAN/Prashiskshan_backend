@@ -51,13 +51,20 @@ const providers = [
     enabled: Boolean(mailgunClient),
     send: async ({ to, subject, html, text }) => {
       if (!mailgunClient) throw new Error("Mailgun not configured");
-      await mailgunClient.messages.create(config.email.mailgun.domain, {
-        from: config.email.mailgun.fromEmail,
-        to,
-        subject,
-        html,
-        text: text || html?.replace(/<[^>]+>/g, ""),
-      });
+      try {
+        await mailgunClient.messages.create(config.email.mailgun.domain, {
+          from: config.email.mailgun.fromEmail,
+          to,
+          subject,
+          html,
+          text: text || html?.replace(/<[^>]+>/g, ""),
+        });
+      } catch (err) {
+        // Log richer diagnostics to help debug 403/Forbidden issues
+        logger.error("Mailgun send failed", { error: err && (err.message || err.toString()), details: err });
+        // Re-throw so callers get the original error
+        throw err;
+      }
     },
   },
 ];
@@ -90,6 +97,21 @@ export const emailService = {
     }
 
     throw new Error("All email providers failed");
+  },
+
+  async sendEmailVia(providerName, options) {
+    const payload = buildContent(options);
+    const provider = providers.find((p) => p.name === providerName);
+    if (!provider) throw new Error(`Unknown provider: ${providerName}`);
+    if (!provider.enabled) throw new Error(`${providerName} not configured`);
+    try {
+      await provider.send(payload);
+      logger.info("Email sent", { provider: provider.name, to: payload.to });
+      return { provider: provider.name };
+    } catch (err) {
+      logger.error("Email provider failed", { provider: provider.name, error: err.message });
+      throw err;
+    }
   },
 
   async sendTemplate(template, data) {
